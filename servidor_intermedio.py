@@ -11,6 +11,8 @@ import json
 from datetime import datetime
 import logging
 
+from requests import RequestException
+
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO
@@ -24,12 +26,14 @@ logger = logging.getLogger()
 
 # Empecé con el supuesto de que usamos RSA 2048, las claves fueron generadas con openssl
 
-# CONFIGURACIÓN: todo: hay q modificar estos valores para q cuadre con el sensor y server final
+# ===== CONFIGURACIÓN: =====
 BYTES_DE_DATOS = 22  # 2 + 8 + 4 + 4 + 4
 PUERTO_RECEPCION = 12345
 IP_RECEPCION = "127.0.0.1"
 PUERTO_MODBUS = 5020
-SERVIDOR_FINAL_URL = "http://localhost:8000/datos"
+SERVIDOR_FINAL_URL = "http://127.0.0.1:5000/data"
+# ==========================
+
 
 # Inicializar almacenamiento Modbus (tienen parte alta y baja porque los registros almacenan 16 bits)
 # Registros:
@@ -47,6 +51,8 @@ store = ModbusSlaveContext(
 )
 context = ModbusServerContext(slaves=store, single=True)
 
+
+# Función para actualizar registros Modbus con los datos recibidos
 def actualizar_registros_modbus(datos):
     try:
         # Separar valores en dos partes de 16 bits
@@ -107,8 +113,8 @@ def enviar_al_servidor_final(datos):
             logger.info(f"Datos enviados correctamente al servidor final")
         else:
             logger.error(f"Error al enviar datos: {response.status_code}", exc_info=True)
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error en la conexión con el servidor final: {e}")
+    except RequestException as ex:
+        logger.error(f"Error en la conexión con el servidor final: {ex}")
 
 
 # servidor que recibe datos binarios, verifica firma y procesa datos
@@ -143,21 +149,28 @@ def servidor_tcp():
                     paquete
                 )
 
-                # crea diccionario con los datos
-                datos_json = {
+                # crea diccionario para registros Modbus
+                datos_modbus = {
                     "ID": id_sensor,
                     "timestamp": timestamp,
-                    "fecha_hora": datetime.fromtimestamp(timestamp).isoformat(),
                     "temperatura": round(temperatura, 2),
                     "presion": round(presion, 2),
                     "humedad": round(humedad, 2)
                 }
 
-                print(f"[VALIDADO] Datos recibidos: {json.dumps(datos_json, indent=2)}")
-
                 # actualiza registros Modbus
-                actualizar_registros_modbus(datos_json)
+                actualizar_registros_modbus(datos_modbus)
 
+                # crea diccionario para servidor final
+                datos_json = {
+                    "sensor_id": id_sensor,
+                    "timestamp": datetime.fromtimestamp(timestamp).isoformat(),
+                    "temperature": round(temperatura, 2),
+                    "pressure": round(presion, 2),
+                    "humidity": round(humedad, 2)
+                }
+
+                print(f"[VALIDADO] Datos recibidos: {json.dumps(datos_json, indent=2)}")
                 # envia al servidor final
                 enviar_al_servidor_final(datos_json)
 
