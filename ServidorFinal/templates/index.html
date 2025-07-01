@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Industrial Monitoring</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 1200px; margin: auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; color: #0056b3; margin-bottom: 30px;}
+        h2 { text-align: center; color: #0056b3; margin-top: 30px; margin-bottom: 15px;}
+        .chart-container {
+            width: 100%;
+            height: 350px; 
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Industrial Sensor Data Monitoring</h1>
+
+        <div class="chart-container">
+            <h2>Temperature Readings</h2>
+            <canvas id="temperatureChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h2>Pressure Readings</h2>
+            <canvas id="pressureChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h2>Humidity Readings</h2>
+            <canvas id="humidityChart"></canvas>
+        </div>
+
+        <h2>Latest Readings</h2>
+        <table border="1" style="width:100%; text-align: left;">
+            <thead>
+                <tr>
+                    <th>Sensor ID</th>
+                    <th>Timestamp</th>
+                    <th>Temperature (°C)</th>
+                    <th>Pressure (Pa)</th>
+                    <th>Humidity (%)</th>
+                </tr>
+            </thead>
+            <tbody id="latestReadingsTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const temperatureCtx = document.getElementById('temperatureChart').getContext('2d');
+        const pressureCtx = document.getElementById('pressureChart').getContext('2d');
+        const humidityCtx = document.getElementById('humidityChart').getContext('2d');
+
+        let temperatureChart, pressureChart, humidityChart;
+
+        function createChart(ctx, label, color) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: label,
+                        data: [], 
+                        borderColor: color,
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                tooltipFormat: 'MMM D, YYYY HH:mm:ss',
+                                displayFormats: {
+                                    minute: 'HH:mm',
+                                    hour: 'HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: label
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    animation: {
+                        duration: 0 
+                    },
+                    hover: {
+                        animationDuration: 0 
+                    },
+                    responsiveAnimationDuration: 0 
+                }
+            });
+        }
+
+        
+        temperatureChart = createChart(temperatureCtx, 'Temperature (°C)', 'rgb(255, 99, 132)');
+        pressureChart = createChart(pressureCtx, 'Pressure (Pa)', 'rgb(54, 162, 235)');
+        humidityChart = createChart(humidityCtx, 'Humidity (%)', 'rgb(75, 192, 192)');
+
+        async function fetchSensorData() {
+            try {
+                const response = await fetch('/api/readings?limit=50');
+                const data = await response.json();
+
+                data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                const temperatureData = data.map(d => ({ x: d.timestamp, y: d.temperature }));
+                const pressureData = data.map(d => ({ x: d.timestamp, y: d.pressure }));
+                const humidityData = data.map(d => ({ x: d.timestamp, y: d.humidity }));
+
+                temperatureChart.data.datasets[0].data = temperatureData;
+                temperatureChart.update();
+
+                pressureChart.data.datasets[0].data = pressureData;
+                pressureChart.update();
+
+                humidityChart.data.datasets[0].data = humidityData;
+                humidityChart.update();
+
+                const tableBody = document.getElementById('latestReadingsTableBody');
+                tableBody.innerHTML = ''; 
+                
+                data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                data.slice(0, 10).forEach(reading => {
+                    const row = tableBody.insertRow();
+                    row.insertCell().textContent = reading.sensor_id;
+                    row.insertCell().textContent = new Date(reading.timestamp).toLocaleString();
+                    row.insertCell().textContent = reading.temperature.toFixed(2);
+                    row.insertCell().textContent = reading.pressure.toFixed(2);
+                    row.insertCell().textContent = reading.humidity.toFixed(2);
+                });
+
+            } catch (error) {
+                console.error('Error fetching sensor data:', error);
+            }
+        }
+
+
+        fetchSensorData();
+        setInterval(fetchSensorData, 1000); 
+    </script>
+</body>
+</html>
