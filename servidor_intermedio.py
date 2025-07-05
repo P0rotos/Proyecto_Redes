@@ -31,7 +31,7 @@ BYTES_DE_DATOS = 22  # 2 + 8 + 4 + 4 + 4
 PUERTO_RECEPCION = 12345
 IP_RECEPCION = "127.0.0.1"
 PUERTO_MODBUS = 5020
-SERVIDOR_FINAL_URL = "http://127.0.0.1:5000/data"
+SERVIDOR_FINAL_URL = "https://127.0.0.1:5000/data"
 # ==========================
 
 
@@ -107,7 +107,8 @@ def enviar_al_servidor_final(datos):
         response = requests.post(
             SERVIDOR_FINAL_URL,
             json=datos,
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            verify='cert.pem'
         )
         if response.status_code == 200:
             logger.info(f"Datos enviados correctamente al servidor final")

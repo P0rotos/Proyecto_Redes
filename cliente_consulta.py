@@ -1,10 +1,10 @@
 import requests
 import time
 
-API_URL = 'http://localhost:5000/api/readings'
+API_URL = 'https://127.0.0.1:5000/api/readings'
 
 # Hay que actualizar estos valores según el rango que esperamos de los sensores.
-TEMP_MIN, TEMP_MAX = 0, 50
+TEMP_MIN, TEMP_MAX = 50, 50
 PRESSURE_MIN, PRESSURE_MAX = 950, 1050
 HUMIDITY_MIN, HUMIDITY_MAX = 20, 80
 
@@ -26,7 +26,7 @@ while True:
         params = {}
         if last_timestamp:
             params['start_time'] = last_timestamp
-        response = requests.get(API_URL, params=params)
+        response = requests.get(API_URL, params=params, verify='cert.pem')
         data = response.json()
         # Ordenar de más antiguo a más nuevo
         data = sorted(data, key=lambda x: x['timestamp'])

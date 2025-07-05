@@ -1,11 +1,16 @@
 # app.py (Servidor Final)
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, abort
 import sqlite3
 from datetime import datetime
 import json
+from werkzeug.exceptions import RequestEntityTooLarge
+from OpenSSL import SSL
 
 app = Flask(__name__)
 DATABASE = 'sensor_data.db'
+
+# Limit request size to 1MB
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
 def init_db():
     conn = sqlite3.connect(DATABASE)
@@ -27,15 +32,50 @@ def init_db():
 def index():
     return render_template('index.html')
 
+@app.after_request
+def set_secure_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_large_request(e):
+    return jsonify({"status": "error", "message": "Request too large"}), 413
+
+def validate_sensor_data(data):
+    required = {
+        'sensor_id': int,
+        'timestamp': str,
+        'temperature': (float, int),
+        'pressure': (float, int),
+        'humidity': (float, int)
+    }
+    for key, typ in required.items():
+        if key not in data:
+            return False, f"Missing field: {key}"
+        if not isinstance(data[key], typ):
+            # Allow string timestamp (ISO format)
+            if key == 'timestamp' and isinstance(data[key], str):
+                continue
+            return False, f"Invalid type for {key}"
+    return True, ""
+
 @app.route('/data', methods=['POST'])
 def receive_data():
     try:
-        data = request.json
+        if not request.is_json:
+            return jsonify({"status": "error", "message": "Invalid content type"}), 400
+        data = request.get_json()
+        valid, msg = validate_sensor_data(data)
+        if not valid:
+            return jsonify({"status": "error", "message": msg}), 400
+
         sensor_id = data['sensor_id']
-        timestamp = data['timestamp'] 
-        temperature = data['temperature']
-        pressure = data['pressure']
-        humidity = data['humidity']
+        timestamp = data['timestamp']
+        temperature = float(data['temperature'])
+        pressure = float(data['pressure'])
+        humidity = float(data['humidity'])
 
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
@@ -47,7 +87,10 @@ def receive_data():
         conn.close()
         return jsonify({"status": "success", "message": "Data received and stored"}), 200
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        # Log the error internally, but don't expose details to the client
+        import logging
+        logging.exception("Error processing /data request")
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 @app.route('/api/readings', methods=['GET'])
 def get_readings():
@@ -91,4 +134,9 @@ def get_readings():
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(
+        debug=False,
+        host='0.0.0.0',
+        port=5000,
+        ssl_context=('cert.pem', 'key.pem')
+    )
