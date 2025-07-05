@@ -109,7 +109,30 @@
 
         let temperatureChart, pressureChart, humidityChart;
 
+        // --- NEW/UPDATED: Define initial time window and format to match DB timestamp precisely ---
+        function getInitialTimeWindow(minutes = 10) {
+            const now = moment();
+            const timeAgo = moment().subtract(minutes, 'minutes');
+
+            // Format to match the database's stored format: "YYYY-MM-DDTHH:mm:ss.ffffff"
+            // SSSSSS gives microseconds.
+            // This assumes your database timestamps are in the same timezone as the browser's local time,
+            // or that both are effectively UTC but without the 'Z' suffix.
+            const dateFormat = 'YYYY-MM-DDTHH:mm:ss.SSSSSS'; 
+
+            return {
+                min: timeAgo.format(dateFormat), 
+                max: now.format(dateFormat)
+            };
+        }
+
         function createChart(ctx, label, color) {
+            // Get numeric values for min/max for Chart.js scales (moment().valueOf())
+            const initialZoomNumeric = {
+                min: moment().subtract(60, 'minutes').valueOf(),
+                max: moment().valueOf()
+            };
+
             return new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -130,7 +153,7 @@
                             type: 'time',
                             time: {
                                 unit: 'minute',
-                                tooltipFormat: 'MMM D, YYYY HH:mm:ss',
+                                tooltipFormat: 'MMM D, HH:mm:ss',
                                 displayFormats: {
                                     minute: 'HH:mm',
                                     hour: 'HH:mm'
@@ -139,7 +162,10 @@
                             title: {
                                 display: true,
                                 text: 'Time'
-                            }
+                            },
+                            // Set initial scale based on numeric moment values
+                            min: initialZoomNumeric.min,
+                            max: initialZoomNumeric.max
                         },
                         y: {
                             beginAtZero: false,
@@ -161,19 +187,25 @@
                         zoom: {
                             pan: {
                                 enabled: true,
-                                mode: 'xy'
+                                mode: 'xy' 
                             },
                             zoom: {
                                 drag: {
                                     enabled: true,
                                     backgroundColor: 'rgba(54,162,235,0.15)'
                                 },
-                                mode: 'x',
+                                mode: 'x', 
                                 wheel: {
                                     enabled: true,
                                 },
                                 pinch: {
                                     enabled: true
+                                },
+                                initial: {
+                                    x: {
+                                        min: initialZoomNumeric.min,
+                                        max: initialZoomNumeric.max
+                                    }
                                 }
                             }
                         }
@@ -196,15 +228,30 @@
 
         // Listener de los botones de reinicio de zoom:
         document.getElementById('resetZoomTemp').addEventListener('click', function() {
-            temperatureChart.resetZoom();
+            const initialZoomNumeric = {
+                min: moment().subtract(60, 'minutes').valueOf(),
+                max: moment().valueOf()
+            };
+            temperatureChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
+            temperatureChart.update();
         });
 
         document.getElementById('resetZoomPressure').addEventListener('click', function() {
-            pressureChart.resetZoom();
+            const initialZoomNumeric = {
+                min: moment().subtract(60, 'minutes').valueOf(),
+                max: moment().valueOf()
+            };
+            pressureChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
+            pressureChart.update();
         });
 
         document.getElementById('resetZoomHumidity').addEventListener('click', function() {
-            humidityChart.resetZoom();
+            const initialZoomNumeric = {
+                min: moment().subtract(60, 'minutes').valueOf(),
+                max: moment().valueOf()
+            };
+            humidityChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
+            humidityChart.update();
         });
 
         document.getElementById('temperatureChart').addEventListener('contextmenu', e => e.preventDefault());
@@ -213,9 +260,14 @@
 
         async function fetchSensorData() {
             try {
-                const response = await fetch('/api/readings?limit=50');
+                // --- UPDATED: Get formatted strings for URL parameters ---
+                const initialZoomWindowFormatted = getInitialTimeWindow(60);
+                const url = `/api/readings?start_time=${initialZoomWindowFormatted.min}&end_time=${initialZoomWindowFormatted.max}`;
+                
+                const response = await fetch(url);
                 const data = await response.json();
 
+                // Sort data by timestamp in ascending order for charts
                 data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
                 const temperatureData = data.map(d => ({ x: d.timestamp, y: d.temperature }));
@@ -223,17 +275,18 @@
                 const humidityData = data.map(d => ({ x: d.timestamp, y: d.humidity }));
 
                 temperatureChart.data.datasets[0].data = temperatureData;
-                temperatureChart.update();
+                temperatureChart.update('none'); 
 
                 pressureChart.data.datasets[0].data = pressureData;
-                pressureChart.update();
+                pressureChart.update('none');
 
                 humidityChart.data.datasets[0].data = humidityData;
-                humidityChart.update();
+                humidityChart.update('none');
 
                 const tableBody = document.getElementById('latestReadingsTableBody');
                 tableBody.innerHTML = '';
 
+                // Sort data by timestamp in descending order for the table (latest first)
                 data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 data.slice(0, 10).forEach(reading => {
                     const row = tableBody.insertRow();
