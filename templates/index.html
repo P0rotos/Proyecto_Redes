@@ -129,7 +129,7 @@
         function createChart(ctx, label, color) {
             // Get numeric values for min/max for Chart.js scales (moment().valueOf())
             const initialZoomNumeric = {
-                min: moment().subtract(60, 'minutes').valueOf(),
+                min: moment().subtract(30, 'minutes').valueOf(),
                 max: moment().valueOf()
             };
 
@@ -229,7 +229,7 @@
         // Listener de los botones de reinicio de zoom:
         document.getElementById('resetZoomTemp').addEventListener('click', function() {
             const initialZoomNumeric = {
-                min: moment().subtract(60, 'minutes').valueOf(),
+                min: moment().subtract(30, 'minutes').valueOf(),
                 max: moment().valueOf()
             };
             temperatureChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
@@ -238,7 +238,7 @@
 
         document.getElementById('resetZoomPressure').addEventListener('click', function() {
             const initialZoomNumeric = {
-                min: moment().subtract(60, 'minutes').valueOf(),
+                min: moment().subtract(30, 'minutes').valueOf(),
                 max: moment().valueOf()
             };
             pressureChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
@@ -247,7 +247,7 @@
 
         document.getElementById('resetZoomHumidity').addEventListener('click', function() {
             const initialZoomNumeric = {
-                min: moment().subtract(60, 'minutes').valueOf(),
+                min: moment().subtract(30, 'minutes').valueOf(),
                 max: moment().valueOf()
             };
             humidityChart.zoom({x: {min: initialZoomNumeric.min, max: initialZoomNumeric.max}}, 'x');
@@ -261,7 +261,7 @@
         async function fetchSensorData() {
             try {
                 // --- UPDATED: Get formatted strings for URL parameters ---
-                const initialZoomWindowFormatted = getInitialTimeWindow(60);
+                const initialZoomWindowFormatted = getInitialTimeWindow(30);
                 const url = `/api/readings?start_time=${initialZoomWindowFormatted.min}&end_time=${initialZoomWindowFormatted.max}`;
                 
                 const response = await fetch(url);

@@ -4,9 +4,9 @@ import time
 API_URL = 'https://127.0.0.1:5000/api/readings'
 
 # Hay que actualizar estos valores según el rango que esperamos de los sensores.
-TEMP_MIN, TEMP_MAX = 50, 50
-PRESSURE_MIN, PRESSURE_MAX = 950, 1050
-HUMIDITY_MIN, HUMIDITY_MAX = 20, 80
+TEMP_MIN, TEMP_MAX = 21, 24
+PRESSURE_MIN, PRESSURE_MAX = 1011, 1014
+HUMIDITY_MIN, HUMIDITY_MAX = 42, 58
 
 def check_alerts(reading):
     alerts = []

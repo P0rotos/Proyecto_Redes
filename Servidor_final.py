@@ -32,12 +32,12 @@ def init_db():
 def index():
     return render_template('index.html')
 
-@app.after_request
-def set_secure_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Cache-Control'] = 'no-store'
-    return response
+# @app.after_request
+# def set_secure_headers(response):
+#     response.headers['X-Content-Type-Options'] = 'nosniff'
+#     response.headers['X-Frame-Options'] = 'DENY'
+#     response.headers['Cache-Control'] = 'no-store'
+#     return response
 
 @app.errorhandler(RequestEntityTooLarge)
 def handle_large_request(e):
@@ -55,7 +55,6 @@ def validate_sensor_data(data):
         if key not in data:
             return False, f"Missing field: {key}"
         if not isinstance(data[key], typ):
-            # Allow string timestamp (ISO format)
             if key == 'timestamp' and isinstance(data[key], str):
                 continue
             return False, f"Invalid type for {key}"
@@ -76,6 +75,9 @@ def receive_data():
         temperature = float(data['temperature'])
         pressure = float(data['pressure'])
         humidity = float(data['humidity'])
+
+        # Print the sensor_id and temperature
+        print(f"Received data - Sensor ID: {sensor_id}, Temperature: {temperature}")
 
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
