@@ -1,10 +1,7 @@
 # app.py (Servidor Final)
-from flask import Flask, request, jsonify, render_template, abort
 import sqlite3
-from datetime import datetime
-import json
+from flask import Flask, request, jsonify, render_template
 from werkzeug.exceptions import RequestEntityTooLarge
-from OpenSSL import SSL
 
 app = Flask(__name__)
 DATABASE = 'sensor_data.db'
