@@ -24,12 +24,16 @@ last_timestamp = None
 while True:
     try:
         params = {}
+
+        # Si hay un último timestamp, lo usamos para filtrar las lecturas desde ese punto
         if last_timestamp:
             params['start_time'] = last_timestamp
         response = requests.get(API_URL, params=params, verify='cert.pem')
         data = response.json()
         # Ordenar de más antiguo a más nuevo
         data = sorted(data, key=lambda x: x['timestamp'])
+
+        # Por cada lectura, verifica si hay alertas
         for reading in data:
             alerts = check_alerts(reading)
             for alert in alerts:

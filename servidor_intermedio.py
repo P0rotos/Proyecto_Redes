@@ -13,6 +13,7 @@ import logging
 
 from requests import RequestException
 
+# Configuración del logger para ver los mensajes de debug
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO
@@ -104,6 +105,7 @@ except Exception as e:
 def enviar_al_servidor_final(datos):
 
     try:
+        # Enviar datos json al servidor final
         response = requests.post(
             SERVIDOR_FINAL_URL,
             json=datos,
@@ -121,12 +123,14 @@ def enviar_al_servidor_final(datos):
 # servidor que recibe datos binarios, verifica firma y procesa datos
 def servidor_tcp():
 
+    # Configurar socket TCP para recibir datos
     s = socket.socket()
     s.bind((IP_RECEPCION, PUERTO_RECEPCION))
     s.listen()
     print(f"Servidor intermedio escuchando en {IP_RECEPCION}:{PUERTO_RECEPCION}")
 
     while True:
+        # Aceptar conexión entrante
         conn, addr = s.accept()
         logger.info(f"Conexión recibida desde {addr}")
         data = conn.recv(1024)
